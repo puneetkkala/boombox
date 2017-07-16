@@ -1,10 +1,18 @@
 package com.kalapuneet.boombox
 
+import android.Manifest
 import android.app.Activity
+import android.content.ContentResolver
 import android.content.Intent
+import android.content.SharedPreferences
+import android.content.pm.PackageManager
+import android.database.Cursor
 import android.net.Uri
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
+import android.provider.MediaStore
+import android.support.v4.app.ActivityCompat
+import android.support.v4.content.ContextCompat
 import com.google.android.exoplayer2.ExoPlayerFactory
 import com.google.android.exoplayer2.SimpleExoPlayer
 import com.google.android.exoplayer2.extractor.DefaultExtractorsFactory
@@ -30,6 +38,7 @@ class MainActivity : AppCompatActivity() {
     var extractorsFactory: ExtractorsFactory? = null
 
     val FILE_SELECT_CODE = 0
+    val MY_WAKE_LOCK_PERMISSION = 1010
 
     fun showFileChooser() {
         val intent = Intent(Intent.ACTION_GET_CONTENT)
@@ -68,6 +77,24 @@ class MainActivity : AppCompatActivity() {
         (simpleExoPlayerView as SimpleExoPlayerView).player = simpleExoPlayer
         dataSourceFactory = DefaultDataSourceFactory(this,Util.getUserAgent(this,getString(R.string.app_name)), bandwidthMeter as DefaultBandwidthMeter)
         extractorsFactory = DefaultExtractorsFactory()
-        showFileChooser()
+        if(ContextCompat.checkSelfPermission(this,Manifest.permission.WAKE_LOCK) != PackageManager.PERMISSION_GRANTED || ContextCompat.checkSelfPermission(this,Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+            var permissions = arrayOf(Manifest.permission.WAKE_LOCK,Manifest.permission.READ_EXTERNAL_STORAGE)
+            ActivityCompat.requestPermissions(this,permissions,MY_WAKE_LOCK_PERMISSION)
+        } else {
+            var contentResolver = contentResolver
+            var uri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
+            var cursor = contentResolver.query(uri,null,null,null,null);
+            if(cursor != null && cursor.moveToFirst()) {
+                do {
+
+                } while (cursor.moveToNext())
+            }
+            if(cursor != null)
+                cursor.close();
+            var sharedPreferences1 = getSharedPreferences("mediaPreferences", MODE_PRIVATE)
+            var editor = sharedPreferences1.edit()
+            editor.putLong("lastFetchTime",0)
+            editor.apply()
+        }
     }
 }
