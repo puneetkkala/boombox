@@ -2,36 +2,38 @@ package com.kalapuneet.boombox
 
 import android.Manifest
 import android.app.Activity
-import android.content.ContentUris
-import android.content.Intent
+import android.content.*
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
+import android.os.IBinder
 import android.provider.MediaStore
 import android.support.v4.app.ActivityCompat
 import android.support.v4.content.ContextCompat
 import android.support.v7.app.AppCompatActivity
 import android.widget.ArrayAdapter
 import android.widget.ListView
-import com.google.android.exoplayer2.ExoPlayerFactory
-import com.google.android.exoplayer2.SimpleExoPlayer
-import com.google.android.exoplayer2.extractor.DefaultExtractorsFactory
-import com.google.android.exoplayer2.extractor.ExtractorsFactory
-import com.google.android.exoplayer2.source.ExtractorMediaSource
-import com.google.android.exoplayer2.trackselection.AdaptiveTrackSelection
-import com.google.android.exoplayer2.trackselection.DefaultTrackSelector
-import com.google.android.exoplayer2.trackselection.TrackSelector
 import com.google.android.exoplayer2.ui.SimpleExoPlayerView
-import com.google.android.exoplayer2.upstream.BandwidthMeter
-import com.google.android.exoplayer2.upstream.DefaultBandwidthMeter
-import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory
-import com.google.android.exoplayer2.util.Util
 import com.kalapuneet.boombox.objects.MediaFile
 
 class MainActivity : AppCompatActivity() {
 
     var simpleExoPlayerView: SimpleExoPlayerView? = null
     var mediaList: ListView? = null
+    var musicService: MusicService? = null
+    var isBound: Boolean = false
+    var serviceConnection: ServiceConnection = object : ServiceConnection {
+        override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+            val binder: MusicService.PlayerBinder = service as MusicService.PlayerBinder
+            musicService = binder.getService()
+            isBound = true
+        }
+
+        override fun onServiceDisconnected(name: ComponentName?) {
+            isBound = false
+        }
+    }
+
 
     val FILE_SELECT_CODE = 0
     val MY_WAKE_LOCK_PERMISSION = 1010
@@ -54,9 +56,16 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun startMusicService(uri: Uri?) {
-        val intent = Intent(this, MusicService::class.java)
+        /*val intent = Intent(this, MusicService::class.java)
         intent.putExtra("URI", uri.toString())
-        startService(intent)
+        bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)*/
+        if (isBound) {
+            (simpleExoPlayerView as SimpleExoPlayerView).player = musicService?.getExoplayer()
+            val intent = Intent(this, MusicService::class.java)
+            intent.putExtra("URI", uri.toString())
+            startService(intent)
+        }
+
     }
 
 
@@ -66,7 +75,6 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
         simpleExoPlayerView = findViewById(R.id.simple_exo_player_view) as SimpleExoPlayerView
         mediaList = findViewById(R.id.media_list) as ListView
-       // (simpleExoPlayerView as SimpleExoPlayerView).player = simpleExoPlayer
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.WAKE_LOCK) != PackageManager.PERMISSION_GRANTED || ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
             val permissions = arrayOf(Manifest.permission.WAKE_LOCK, Manifest.permission.READ_EXTERNAL_STORAGE)
@@ -98,5 +106,20 @@ class MainActivity : AppCompatActivity() {
             editor.putLong("lastFetchTime", 0)
             editor.apply()
         }
+    }
+
+    override fun onStart() {
+
+        super.onStart()
+        val intent = Intent(this, MusicService::class.java)
+        bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
+    }
+
+    override fun onStop() {
+        if (isBound) {
+            unbindService(serviceConnection)
+            isBound = false
+        }
+        super.onStop()
     }
 }

@@ -4,6 +4,7 @@ import android.app.Notification
 import android.app.Service
 import android.content.Intent
 import android.net.Uri
+import android.os.Binder
 import android.os.IBinder
 import android.support.v4.app.NotificationCompat
 import com.google.android.exoplayer2.ExoPlayerFactory
@@ -27,6 +28,13 @@ class MusicService : Service() {
     var trackSelector: TrackSelector? = null
     var dataSourceFactory: DefaultDataSourceFactory? = null
     var extractorsFactory: ExtractorsFactory? = null
+    var binder: IBinder = PlayerBinder()
+
+   inner class PlayerBinder: Binder() {
+       fun getService(): MusicService {
+           return this@MusicService
+       }
+   }
 
     override fun onCreate() {
         super.onCreate()
@@ -49,6 +57,10 @@ class MusicService : Service() {
         simpleExoPlayer?.stop()
     }
 
+    fun getExoplayer(): SimpleExoPlayer? {
+        return simpleExoPlayer
+    }
+
     fun musicNotification(): Notification {
         val notification = NotificationCompat.Builder(this)
                 .setContentTitle("Boombox")
@@ -58,8 +70,7 @@ class MusicService : Service() {
     }
 
     override fun onBind(intent: Intent): IBinder? {
-        // TODO: Return the communication channel to the service.
-        throw UnsupportedOperationException("Not yet implemented")
+        return binder
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
