@@ -27,7 +27,6 @@ import com.google.android.exoplayer2.upstream.DefaultBandwidthMeter
 import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory
 import com.google.android.exoplayer2.util.Util
 import com.kalapuneet.boombox.objects.MediaFile
-import java.net.URI
 
 class MainActivity : AppCompatActivity() {
 
