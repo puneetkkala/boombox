@@ -2,6 +2,7 @@ package com.kalapuneet.boombox
 
 import android.Manifest
 import android.app.Activity
+import android.content.ContentUris
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -10,7 +11,8 @@ import android.provider.MediaStore
 import android.support.v4.app.ActivityCompat
 import android.support.v4.content.ContextCompat
 import android.support.v7.app.AppCompatActivity
-import android.util.Log
+import android.widget.ArrayAdapter
+import android.widget.ListView
 import com.google.android.exoplayer2.ExoPlayerFactory
 import com.google.android.exoplayer2.SimpleExoPlayer
 import com.google.android.exoplayer2.extractor.DefaultExtractorsFactory
@@ -24,6 +26,7 @@ import com.google.android.exoplayer2.upstream.BandwidthMeter
 import com.google.android.exoplayer2.upstream.DefaultBandwidthMeter
 import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory
 import com.google.android.exoplayer2.util.Util
+import com.kalapuneet.boombox.objects.MediaFile
 
 class MainActivity : AppCompatActivity() {
 
@@ -34,6 +37,7 @@ class MainActivity : AppCompatActivity() {
     var simpleExoPlayerView: SimpleExoPlayerView? = null
     var dataSourceFactory: DefaultDataSourceFactory? = null
     var extractorsFactory: ExtractorsFactory? = null
+    var mediaList: ListView? = null
 
     val FILE_SELECT_CODE = 0
     val MY_WAKE_LOCK_PERMISSION = 1010
@@ -42,7 +46,7 @@ class MainActivity : AppCompatActivity() {
         val intent = Intent(Intent.ACTION_GET_CONTENT)
         intent.type = "*/*"
         intent.addCategory(Intent.CATEGORY_OPENABLE)
-        this.startActivityForResult(Intent.createChooser(intent, "Select a file to run"),FILE_SELECT_CODE)
+        this.startActivityForResult(Intent.createChooser(intent, "Select a file to run"), FILE_SELECT_CODE)
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -56,7 +60,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun startPlayer(uri: Uri?) {
-        val videoSource = ExtractorMediaSource(uri,dataSourceFactory,extractorsFactory,null,null)
+        val videoSource = ExtractorMediaSource(uri, dataSourceFactory, extractorsFactory, null, null)
         simpleExoPlayer?.prepare(videoSource)
     }
 
@@ -70,27 +74,40 @@ class MainActivity : AppCompatActivity() {
         bandwidthMeter = DefaultBandwidthMeter()
         videoTrackSelectionFactory = AdaptiveTrackSelection.Factory(bandwidthMeter)
         trackSelector = DefaultTrackSelector(videoTrackSelectionFactory)
-        simpleExoPlayer = ExoPlayerFactory.newSimpleInstance(this,trackSelector)
+        simpleExoPlayer = ExoPlayerFactory.newSimpleInstance(this, trackSelector)
         simpleExoPlayerView = findViewById(R.id.simple_exo_player_view) as SimpleExoPlayerView
+        mediaList = findViewById(R.id.media_list) as ListView
         (simpleExoPlayerView as SimpleExoPlayerView).player = simpleExoPlayer
-        dataSourceFactory = DefaultDataSourceFactory(this,Util.getUserAgent(this,getString(R.string.app_name)), bandwidthMeter as DefaultBandwidthMeter)
+        dataSourceFactory = DefaultDataSourceFactory(this, Util.getUserAgent(this, getString(R.string.app_name)), bandwidthMeter as DefaultBandwidthMeter)
         extractorsFactory = DefaultExtractorsFactory()
-        if(ContextCompat.checkSelfPermission(this,Manifest.permission.WAKE_LOCK) != PackageManager.PERMISSION_GRANTED || ContextCompat.checkSelfPermission(this,Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-            val permissions = arrayOf(Manifest.permission.WAKE_LOCK,Manifest.permission.READ_EXTERNAL_STORAGE)
-            ActivityCompat.requestPermissions(this,permissions,MY_WAKE_LOCK_PERMISSION)
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.WAKE_LOCK) != PackageManager.PERMISSION_GRANTED || ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+            val permissions = arrayOf(Manifest.permission.WAKE_LOCK, Manifest.permission.READ_EXTERNAL_STORAGE)
+            ActivityCompat.requestPermissions(this, permissions, MY_WAKE_LOCK_PERMISSION)
         } else {
             val contentResolver = contentResolver
-            val uri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
-            val cursor = contentResolver.query(uri,null,null,null,null);
-            if(cursor != null && cursor.moveToFirst()) {
+            val uri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
+            val cursor = contentResolver.query(uri, null, null, null, null)
+            var mediaFileList: List<MediaFile> = emptyList()
+            var titleList: List<String> = emptyList()
+            if (cursor != null && cursor.moveToFirst()) {
                 do {
-                    Log.e("MainActivity",cursor.getString(cursor.getColumnIndex(MediaStore.Audio.Media.TITLE)))
+                    val mediaFile: MediaFile = MediaFile()
+                    mediaFile.id = cursor.getLong(cursor.getColumnIndex(MediaStore.Audio.Media._ID))
+                    mediaFile.name = cursor.getString(cursor.getColumnIndex(MediaStore.Audio.Media.TITLE))
+                    mediaFileList = mediaFileList.plus(mediaFile)
+                    titleList = titleList.plus(mediaFile.name)
                 } while (cursor.moveToNext())
             }
             cursor?.close()
+            mediaList?.adapter = ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, android.R.id.text1, titleList)
+            mediaList?.setOnItemClickListener { parent, view, position, id ->
+                val mediaFile: MediaFile = mediaFileList.get(position)
+                val mediaUri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,mediaFile.id)
+                startPlayer(mediaUri)
+            }
             val sharedPreferences1 = getSharedPreferences("mediaPreferences", MODE_PRIVATE)
             val editor = sharedPreferences1.edit()
-            editor.putLong("lastFetchTime",0)
+            editor.putLong("lastFetchTime", 0)
             editor.apply()
         }
     }
