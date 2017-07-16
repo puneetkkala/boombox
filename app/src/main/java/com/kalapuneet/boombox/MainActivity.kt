@@ -30,13 +30,7 @@ import com.kalapuneet.boombox.objects.MediaFile
 
 class MainActivity : AppCompatActivity() {
 
-    var simpleExoPlayer: SimpleExoPlayer? = null
-    var bandwidthMeter: BandwidthMeter? = null
-    var videoTrackSelectionFactory: AdaptiveTrackSelection.Factory? = null
-    var trackSelector: TrackSelector? = null
     var simpleExoPlayerView: SimpleExoPlayerView? = null
-    var dataSourceFactory: DefaultDataSourceFactory? = null
-    var extractorsFactory: ExtractorsFactory? = null
     var mediaList: ListView? = null
 
     val FILE_SELECT_CODE = 0
@@ -53,34 +47,27 @@ class MainActivity : AppCompatActivity() {
         when (requestCode) {
             FILE_SELECT_CODE -> if (resultCode == Activity.RESULT_OK) {
                 val uri: Uri? = data?.data
-                startPlayer(uri)
+                startMusicService(uri)
             }
         }
         super.onActivityResult(requestCode, resultCode, data)
     }
 
-    fun startPlayer(uri: Uri?) {
-        val videoSource = ExtractorMediaSource(uri, dataSourceFactory, extractorsFactory, null, null)
-        simpleExoPlayer?.playWhenReady = true
-        simpleExoPlayer?.prepare(videoSource)
+    fun startMusicService(uri: Uri?) {
+        val intent = Intent(this, MusicService::class.java)
+        intent.putExtra("URI", uri.toString())
+        startService(intent)
     }
 
-    fun stopPlayer() {
-        simpleExoPlayer?.stop()
-    }
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        bandwidthMeter = DefaultBandwidthMeter()
-        videoTrackSelectionFactory = AdaptiveTrackSelection.Factory(bandwidthMeter)
-        trackSelector = DefaultTrackSelector(videoTrackSelectionFactory)
-        simpleExoPlayer = ExoPlayerFactory.newSimpleInstance(this, trackSelector)
         simpleExoPlayerView = findViewById(R.id.simple_exo_player_view) as SimpleExoPlayerView
         mediaList = findViewById(R.id.media_list) as ListView
-        (simpleExoPlayerView as SimpleExoPlayerView).player = simpleExoPlayer
-        dataSourceFactory = DefaultDataSourceFactory(this, Util.getUserAgent(this, getString(R.string.app_name)), bandwidthMeter as DefaultBandwidthMeter)
-        extractorsFactory = DefaultExtractorsFactory()
+       // (simpleExoPlayerView as SimpleExoPlayerView).player = simpleExoPlayer
+
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.WAKE_LOCK) != PackageManager.PERMISSION_GRANTED || ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
             val permissions = arrayOf(Manifest.permission.WAKE_LOCK, Manifest.permission.READ_EXTERNAL_STORAGE)
             ActivityCompat.requestPermissions(this, permissions, MY_WAKE_LOCK_PERMISSION)
@@ -104,7 +91,7 @@ class MainActivity : AppCompatActivity() {
             mediaList?.setOnItemClickListener { parent, view, position, id ->
                 val mediaFile: MediaFile = mediaFileList.get(position)
                 val mediaUri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,mediaFile.id)
-                startPlayer(mediaUri)
+                startMusicService(mediaUri)
             }
             val sharedPreferences1 = getSharedPreferences("mediaPreferences", MODE_PRIVATE)
             val editor = sharedPreferences1.edit()
