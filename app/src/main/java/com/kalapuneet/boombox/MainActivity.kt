@@ -13,6 +13,8 @@ import android.support.v4.content.ContextCompat
 import android.support.v7.app.AppCompatActivity
 import android.widget.ArrayAdapter
 import android.widget.ListView
+import com.google.android.exoplayer2.ExoPlayer
+import com.google.android.exoplayer2.ui.PlaybackControlView
 import com.google.android.exoplayer2.ui.SimpleExoPlayerView
 import com.kalapuneet.boombox.objects.MediaFile
 
@@ -27,6 +29,23 @@ class MainActivity : AppCompatActivity() {
             val binder: MusicService.PlayerBinder = service as MusicService.PlayerBinder
             musicService = binder.getService()
             isBound = true
+            (simpleExoPlayerView as SimpleExoPlayerView).player = musicService?.getExoplayer()
+            simpleExoPlayerView?.setControlDispatcher(object : PlaybackControlView.ControlDispatcher {
+                override fun dispatchSetPlayWhenReady(player: ExoPlayer?, playWhenReady: Boolean): Boolean {
+                    if (playWhenReady) {
+                        musicService?.musicNotification("PAUSE")
+                    } else {
+                        musicService?.musicNotification("PLAY")
+                    }
+                    player?.playWhenReady = playWhenReady
+                    return true
+                }
+
+                override fun dispatchSeekTo(player: ExoPlayer?, windowIndex: Int, positionMs: Long): Boolean {
+                    player?.seekTo(windowIndex,positionMs)
+                    return true
+                }
+            })
         }
 
         override fun onServiceDisconnected(name: ComponentName?) {
@@ -61,6 +80,22 @@ class MainActivity : AppCompatActivity() {
         bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)*/
         if (isBound) {
             (simpleExoPlayerView as SimpleExoPlayerView).player = musicService?.getExoplayer()
+            simpleExoPlayerView?.setControlDispatcher(object : PlaybackControlView.ControlDispatcher {
+                override fun dispatchSetPlayWhenReady(player: ExoPlayer?, playWhenReady: Boolean): Boolean {
+                    if (playWhenReady) {
+                        musicService?.resumePlayer()
+                    } else {
+                        musicService?.stopPlayer()
+                    }
+                    player?.playWhenReady = playWhenReady
+                    return true
+                }
+
+                override fun dispatchSeekTo(player: ExoPlayer?, windowIndex: Int, positionMs: Long): Boolean {
+                    player?.seekTo(windowIndex,positionMs)
+                    return true
+                }
+            })
             val intent = Intent(this, MusicService::class.java)
             intent.putExtra("URI", uri.toString())
             startService(intent)
@@ -109,10 +144,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onStart() {
-
         super.onStart()
         val intent = Intent(this, MusicService::class.java)
         bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
+    }
+
+    override fun onResume() {
+        super.onResume()
     }
 
     override fun onStop() {

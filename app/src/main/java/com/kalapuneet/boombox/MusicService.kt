@@ -74,39 +74,28 @@ class MusicService : Service() {
 
     fun stopPlayer() {
         simpleExoPlayer?.playWhenReady = false
-        val intent = Intent("PLAY")
-        val pi : PendingIntent = PendingIntent.getBroadcast(applicationContext, 0, intent,0)
-        val notification = NotificationCompat.Builder(this)
-                .setContentTitle("Boombox")
-                .setSmallIcon(R.mipmap.ic_launcher)
-                .addAction(0,"PLAY",pi)
-                .build()
-        startForeground(100, notification)
+        startForeground(100, musicNotification("PLAY"))
     }
 
     fun resumePlayer() {
         simpleExoPlayer?.playWhenReady = true
-        val intent = Intent("PAUSE")
-        val pi : PendingIntent = PendingIntent.getBroadcast(applicationContext, 0, intent,0)
-        val notification = NotificationCompat.Builder(this)
-                .setContentTitle("Boombox")
-                .setSmallIcon(R.mipmap.ic_launcher)
-                .addAction(0,"PAUSE",pi)
-                .build()
-        startForeground(100, notification)
+        startForeground(100, musicNotification("PAUSE"))
     }
 
     fun getExoplayer(): SimpleExoPlayer? {
         return simpleExoPlayer
     }
 
-    fun musicNotification(): Notification {
-        val intent = Intent("PAUSE")
+    fun musicNotification(a: String): Notification {
+        val intent = Intent(a)
         val pi : PendingIntent = PendingIntent.getBroadcast(applicationContext, 0, intent,0)
+        val main = Intent(this,MainActivity::class.java)
+        val pi2: PendingIntent = PendingIntent.getActivity(this,0,main,0)
         val notification = NotificationCompat.Builder(this)
                 .setContentTitle("Boombox")
                 .setSmallIcon(R.mipmap.ic_launcher)
-                .addAction(0,"PAUSE",pi)
+                .addAction(0,a,pi)
+                .setContentIntent(pi2)
                 .build()
         return notification
     }
@@ -117,7 +106,7 @@ class MusicService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         startPlayer(Uri.parse(intent?.getStringExtra("URI")))
-        startForeground(100, musicNotification())
+        startForeground(100, musicNotification("PAUSE"))
         return START_STICKY
     }
 
