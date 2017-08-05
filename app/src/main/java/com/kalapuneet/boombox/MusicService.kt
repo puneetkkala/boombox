@@ -37,7 +37,12 @@ class MusicService : Service() {
     var binder: IBinder = PlayerBinder()
     val broadCastReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            stopPlayer()
+            val action: String? = intent?.action
+            if (action.equals("PAUSE")) {
+                stopPlayer()
+            } else {
+                resumePlayer()
+            }
         }
     }
 
@@ -51,6 +56,7 @@ class MusicService : Service() {
         super.onCreate()
         val filter: IntentFilter = IntentFilter()
         filter.addAction("PAUSE")
+        filter.addAction("PLAY")
         registerReceiver(broadCastReceiver, filter)
         bandwidthMeter = DefaultBandwidthMeter()
         videoTrackSelectionFactory = AdaptiveTrackSelection.Factory(bandwidthMeter)
@@ -68,6 +74,26 @@ class MusicService : Service() {
 
     fun stopPlayer() {
         simpleExoPlayer?.playWhenReady = false
+        val intent = Intent("PLAY")
+        val pi : PendingIntent = PendingIntent.getBroadcast(applicationContext, 0, intent,0)
+        val notification = NotificationCompat.Builder(this)
+                .setContentTitle("Boombox")
+                .setSmallIcon(R.mipmap.ic_launcher)
+                .addAction(0,"PLAY",pi)
+                .build()
+        startForeground(100, notification)
+    }
+
+    fun resumePlayer() {
+        simpleExoPlayer?.playWhenReady = true
+        val intent = Intent("PAUSE")
+        val pi : PendingIntent = PendingIntent.getBroadcast(applicationContext, 0, intent,0)
+        val notification = NotificationCompat.Builder(this)
+                .setContentTitle("Boombox")
+                .setSmallIcon(R.mipmap.ic_launcher)
+                .addAction(0,"PAUSE",pi)
+                .build()
+        startForeground(100, notification)
     }
 
     fun getExoplayer(): SimpleExoPlayer? {
