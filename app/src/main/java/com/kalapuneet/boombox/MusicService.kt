@@ -1,12 +1,18 @@
 package com.kalapuneet.boombox
 
 import android.app.Notification
+import android.app.PendingIntent
 import android.app.Service
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.net.Uri
 import android.os.Binder
+import android.os.Bundle
 import android.os.IBinder
 import android.support.v4.app.NotificationCompat
+import android.support.v4.content.LocalBroadcastManager
 import com.google.android.exoplayer2.ExoPlayerFactory
 import com.google.android.exoplayer2.SimpleExoPlayer
 import com.google.android.exoplayer2.extractor.DefaultExtractorsFactory
@@ -29,6 +35,11 @@ class MusicService : Service() {
     var dataSourceFactory: DefaultDataSourceFactory? = null
     var extractorsFactory: ExtractorsFactory? = null
     var binder: IBinder = PlayerBinder()
+    val broadCastReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            stopPlayer()
+        }
+    }
 
    inner class PlayerBinder: Binder() {
        fun getService(): MusicService {
@@ -38,7 +49,9 @@ class MusicService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-
+        val filter: IntentFilter = IntentFilter()
+        filter.addAction("PAUSE")
+        registerReceiver(broadCastReceiver, filter)
         bandwidthMeter = DefaultBandwidthMeter()
         videoTrackSelectionFactory = AdaptiveTrackSelection.Factory(bandwidthMeter)
         trackSelector = DefaultTrackSelector(videoTrackSelectionFactory)
@@ -54,7 +67,7 @@ class MusicService : Service() {
     }
 
     fun stopPlayer() {
-        simpleExoPlayer?.stop()
+        simpleExoPlayer?.playWhenReady = false
     }
 
     fun getExoplayer(): SimpleExoPlayer? {
@@ -62,9 +75,12 @@ class MusicService : Service() {
     }
 
     fun musicNotification(): Notification {
+        val intent = Intent("PAUSE")
+        val pi : PendingIntent = PendingIntent.getBroadcast(applicationContext, 0, intent,0)
         val notification = NotificationCompat.Builder(this)
                 .setContentTitle("Boombox")
                 .setSmallIcon(R.mipmap.ic_launcher)
+                .addAction(0,"PAUSE",pi)
                 .build()
         return notification
     }
@@ -77,5 +93,10 @@ class MusicService : Service() {
         startPlayer(Uri.parse(intent?.getStringExtra("URI")))
         startForeground(100, musicNotification())
         return START_STICKY
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        unregisterReceiver(broadCastReceiver)
     }
 }
