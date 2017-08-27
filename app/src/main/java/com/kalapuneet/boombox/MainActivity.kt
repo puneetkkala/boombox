@@ -33,9 +33,9 @@ class MainActivity : AppCompatActivity() {
             simpleExoPlayerView?.setControlDispatcher(object : PlaybackControlView.ControlDispatcher {
                 override fun dispatchSetPlayWhenReady(player: ExoPlayer?, playWhenReady: Boolean): Boolean {
                     if (playWhenReady) {
-                        musicService?.musicNotification("PAUSE")
+                        musicService?.resumePlayer()
                     } else {
-                        musicService?.musicNotification("PLAY")
+                        musicService?.stopPlayer()
                     }
                     player?.playWhenReady = playWhenReady
                     return true

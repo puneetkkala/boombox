@@ -1,6 +1,7 @@
 package com.kalapuneet.boombox
 
 import android.app.Notification
+import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
 import android.content.BroadcastReceiver
@@ -74,7 +75,9 @@ class MusicService : Service() {
 
     fun stopPlayer() {
         simpleExoPlayer?.playWhenReady = false
-        startForeground(100, musicNotification("PLAY"))
+        stopForeground(true)
+        val manager : NotificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        manager.notify(100,musicNotification("PLAY"))
     }
 
     fun resumePlayer() {
@@ -88,7 +91,7 @@ class MusicService : Service() {
 
     fun musicNotification(a: String): Notification {
         val intent = Intent(a)
-        val pi : PendingIntent = PendingIntent.getBroadcast(applicationContext, 0, intent,0)
+        val pi : PendingIntent = PendingIntent.getBroadcast(applicationContext, 0, intent,PendingIntent.FLAG_UPDATE_CURRENT)
         val main = Intent(this,MainActivity::class.java)
         val pi2: PendingIntent = PendingIntent.getActivity(this,0,main,0)
         val notification = NotificationCompat.Builder(this)
@@ -96,8 +99,11 @@ class MusicService : Service() {
                 .setSmallIcon(R.mipmap.ic_launcher)
                 .addAction(0,a,pi)
                 .setContentIntent(pi2)
-                .build()
-        return notification
+                .setOngoing(false)
+//        if (a.contentEquals("PLAY")) {
+//            notification.setOngoing(false)
+//        }
+        return notification.build()
     }
 
     override fun onBind(intent: Intent): IBinder? {
@@ -107,7 +113,7 @@ class MusicService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         startPlayer(Uri.parse(intent?.getStringExtra("URI")))
         startForeground(100, musicNotification("PAUSE"))
-        return START_STICKY
+        return START_NOT_STICKY
     }
 
     override fun onDestroy() {
